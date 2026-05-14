@@ -373,3 +373,89 @@ def dose_adherence_analytics(
         d["adherence_rate"] = round(d["taken"] / d["total"] * 100, 1) if d["total"] else 0.0
         result.append(d)
     return result
+
+
+@router.get("/api/analytics/critical-adherence")
+def critical_adherence_analytics(
+    days: int = Query(default=30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Weekly adherence trend split by critical vs non-critical medications."""
+    since = datetime.utcnow() - timedelta(days=days)
+
+    critical_med_ids = set(
+        m.id for m in db.query(Medication).filter(Medication.is_critical == True).all()
+    )
+
+    logs = db.query(DoseLog).filter(DoseLog.logged_at >= since).all()
+
+    weekly = {}
+    for d in logs:
+        week = d.logged_at.strftime("%Y-W%W")
+        if week not in weekly:
+            weekly[week] = {
+                "week": week,
+                "critical_total": 0, "critical_taken": 0,
+                "non_critical_total": 0, "non_critical_taken": 0,
+            }
+        is_crit = d.medication_id in critical_med_ids
+        if is_crit:
+            weekly[week]["critical_total"] += 1
+            if d.status == "taken":
+                weekly[week]["critical_taken"] += 1
+        else:
+            weekly[week]["non_critical_total"] += 1
+            if d.status == "taken":
+                weekly[week]["non_critical_taken"] += 1
+
+    result = []
+    for w in sorted(weekly.keys()):
+        row = weekly[w]
+        row["critical_adherence"] = round(row["critical_taken"] / row["critical_total"] * 100, 1) if row["critical_total"] else 0.0
+        row["non_critical_adherence"] = round(row["non_critical_taken"] / row["non_critical_total"] * 100, 1) if row["non_critical_total"] else 0.0
+        result.append(row)
+    return result
+
+
+@router.get("/api/analytics/missed-dose-heatmap")
+def missed_dose_heatmap(
+    days: int = Query(default=30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Missed dose counts grouped by day of week and time of day."""
+    since = datetime.utcnow() - timedelta(days=days)
+
+    missed_logs = db.query(DoseLog).filter(
+        DoseLog.logged_at >= since, DoseLog.status == "missed"
+    ).all()
+
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    time_slots = ["Morning", "Afternoon", "Evening", "Night"]
+
+    def get_time_slot(hour):
+        if 6 <= hour < 12:
+            return "Morning"
+        elif 12 <= hour < 17:
+            return "Afternoon"
+        elif 17 <= hour < 22:
+            return "Evening"
+        else:
+            return "Night"
+
+    counts = {}
+    for day in day_names:
+        for slot in time_slots:
+            counts[(day, slot)] = 0
+
+    for d in missed_logs:
+        day = day_names[d.logged_at.weekday()]
+        slot = get_time_slot(d.logged_at.hour)
+        counts[(day, slot)] += 1
+
+    return [
+        {"day": day, "time_slot": slot, "missed_count": counts[(day, slot)]}
+        for day in day_names
+        for slot in time_slots
+    ]
