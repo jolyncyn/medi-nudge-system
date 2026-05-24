@@ -9,10 +9,9 @@ from app.core.config import hash_sha256
 from app.models.models import Patient, User, CaregiverNote
 from app.schemas.schemas import PatientCreate, PatientOut, PatientUpdate, PatientListResponse, CaregiverNoteCreate, CaregiverNoteOut
 from app.services.onboarding_service import generate_invite_token, generate_caregiver_invite_token
+from app.services.patient_visibility import visible_patients_query
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
-
-HIDDEN_REGISTRY_PATIENT_NAMES = {"tg_51789857", "tg_1746763759"}
 
 
 @router.post("", response_model=PatientOut, status_code=201)
@@ -68,7 +67,7 @@ def list_patients(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
-    q = db.query(Patient).filter(Patient.full_name.notin_(HIDDEN_REGISTRY_PATIENT_NAMES))
+    q = visible_patients_query(db)
     if is_active is not None:
         q = q.filter(Patient.is_active == is_active)
     if risk_level:

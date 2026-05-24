@@ -12,6 +12,7 @@ from app.models.models import (
 from app.schemas.schemas import NudgeCampaignOut
 from app.services import refill_gap_service
 from app.services.daily_reminder_service import send_scheduled_reminders
+from app.services.patient_visibility import visible_patients_query
 
 router = APIRouter(tags=["campaigns & analytics"])
 
@@ -172,16 +173,22 @@ def dashboard_summary(
     now = now_sgt()
     since_30d = now - timedelta(days=30)
     since_60d = now - timedelta(days=60)
+    visible_patient_ids = [p.id for p in visible_patients_query(db).all()]
 
     # Overall dose adherence (last 30 days)
-    dose_logs_30d = db.query(DoseLog).filter(DoseLog.logged_at >= since_30d).all()
+    dose_logs_30d = db.query(DoseLog).filter(
+        DoseLog.patient_id.in_(visible_patient_ids),
+        DoseLog.logged_at >= since_30d,
+    ).all()
     taken_30d = sum(1 for d in dose_logs_30d if d.status == "taken")
     total_30d = len(dose_logs_30d)
     overall_adherence = round(taken_30d / total_30d * 100, 1) if total_30d else 0.0
 
     # Adherence trend (compare last 30d vs prior 30d)
     dose_logs_prior = db.query(DoseLog).filter(
-        DoseLog.logged_at >= since_60d, DoseLog.logged_at < since_30d
+        DoseLog.patient_id.in_(visible_patient_ids),
+        DoseLog.logged_at >= since_60d,
+        DoseLog.logged_at < since_30d,
     ).all()
     taken_prior = sum(1 for d in dose_logs_prior if d.status == "taken")
     total_prior = len(dose_logs_prior)
@@ -189,7 +196,7 @@ def dashboard_summary(
     adherence_trend = round(overall_adherence - prior_adherence, 1)
 
     # High risk patient count
-    high_risk_count = db.query(Patient).filter(
+    high_risk_count = visible_patients_query(db).filter(
         Patient.is_active == True, Patient.risk_level == "high"
     ).count()
 
@@ -204,7 +211,7 @@ def dashboard_summary(
     )
 
     # At-risk patients: top 10 by worst dose adherence
-    active_patients = db.query(Patient).filter(
+    active_patients = visible_patients_query(db).filter(
         Patient.is_active == True, Patient.onboarding_state == "complete"
     ).all()
     patient_adherence = []
@@ -259,7 +266,10 @@ def dashboard_summary(
     # Pending escalations (open status)
     open_escalations = (
         db.query(EscalationCase)
-        .filter(EscalationCase.status == "open")
+        .filter(
+            EscalationCase.patient_id.in_(visible_patient_ids),
+            EscalationCase.status == "open",
+        )
         .order_by(EscalationCase.created_at.desc())
         .limit(10)
         .all()
