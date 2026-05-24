@@ -12,6 +12,8 @@ from app.services.onboarding_service import generate_invite_token, generate_care
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
+HIDDEN_REGISTRY_PATIENT_NAMES = {"tg_51789857", "tg_1746763759"}
+
 
 @router.post("", response_model=PatientOut, status_code=201)
 def create_patient(
@@ -66,7 +68,7 @@ def list_patients(
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
-    q = db.query(Patient)
+    q = db.query(Patient).filter(Patient.full_name.notin_(HIDDEN_REGISTRY_PATIENT_NAMES))
     if is_active is not None:
         q = q.filter(Patient.is_active == is_active)
     if risk_level:
