@@ -505,6 +505,15 @@ class AckResponse(BaseModel):
     status: str = "ok"
 
 
+class PushSendResponse(BaseModel):
+    status: str = "ok"
+    attempted: int = 0
+    sent: int = 0
+    failed: int = 0
+    deactivated: int = 0
+    errors: list[str] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # OutboundMessage
 # ---------------------------------------------------------------------------

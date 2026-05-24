@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_FROM_NUMBER: str = ""  # E.164, e.g. +6512345678 or whatsapp:+14155238886
 
+    # Apple Push Notification service — injected from AWS Secrets Manager in ECS
+    APNS_PRIVATE_KEY: str = ""
+    APNS_KEY_ID: str = ""
+    APNS_TEAM_ID: str = ""
+    APNS_TOPIC: str = ""
+    APNS_ENVIRONMENT: str = "production"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -1,16 +1,16 @@
-variable "environment"           { type = string }
-variable "aws_region"            { type = string }
-variable "aws_account_id"        { type = string }
-variable "vpc_id"                { type = string }
-variable "public_subnet_ids"     { type = list(string) }
-variable "alb_target_group_arn"  { type = string }
-variable "alb_sg_id"             { type = string }
-variable "ecs_sg_id"             { type = string }
-variable "ecr_repository_url"    { type = string }
-variable "media_bucket_name"     { type = string }
-variable "db_secret_arn"         { type = string }
-variable "task_role_arn"         { type = string }
-variable "execution_role_arn"    { type = string }
+variable "environment" { type = string }
+variable "aws_region" { type = string }
+variable "aws_account_id" { type = string }
+variable "vpc_id" { type = string }
+variable "public_subnet_ids" { type = list(string) }
+variable "alb_target_group_arn" { type = string }
+variable "alb_sg_id" { type = string }
+variable "ecs_sg_id" { type = string }
+variable "ecr_repository_url" { type = string }
+variable "media_bucket_name" { type = string }
+variable "db_secret_arn" { type = string }
+variable "task_role_arn" { type = string }
+variable "execution_role_arn" { type = string }
 variable "api_desired_count" {
   type    = number
   default = 1
@@ -23,15 +23,20 @@ locals {
 }
 
 # Look up the real secret ARNs (AWS appends a 6-char suffix that we can't predict)
-data "aws_secretsmanager_secret" "jwt_secret_key"          { name = "${local.secret_base}/jwt-secret-key" }
-data "aws_secretsmanager_secret" "openai_api_key"          { name = "${local.secret_base}/openai-api-key" }
-data "aws_secretsmanager_secret" "telegram_bot_token"      { name = "${local.secret_base}/telegram-bot-token" }
+data "aws_secretsmanager_secret" "jwt_secret_key" { name = "${local.secret_base}/jwt-secret-key" }
+data "aws_secretsmanager_secret" "openai_api_key" { name = "${local.secret_base}/openai-api-key" }
+data "aws_secretsmanager_secret" "telegram_bot_token" { name = "${local.secret_base}/telegram-bot-token" }
 data "aws_secretsmanager_secret" "telegram_webhook_secret" { name = "${local.secret_base}/telegram-webhook-secret" }
-data "aws_secretsmanager_secret" "elevenlabs_api_key"              { name = "${local.secret_base}/elevenlabs-api-key" }
+data "aws_secretsmanager_secret" "elevenlabs_api_key" { name = "${local.secret_base}/elevenlabs-api-key" }
 data "aws_secretsmanager_secret" "elevenlabs_default_voice_female" { name = "${local.secret_base}/elevenlabs-default-voice-female" }
-data "aws_secretsmanager_secret" "elevenlabs_default_voice_male"   { name = "${local.secret_base}/elevenlabs-default-voice-male" }
-data "aws_secretsmanager_secret" "telegram_bot_username"          { name = "${local.secret_base}/telegram-bot-username" }
-data "aws_secretsmanager_secret" "allowed_origins"                { name = "${local.secret_base}/allowed-origins" }
+data "aws_secretsmanager_secret" "elevenlabs_default_voice_male" { name = "${local.secret_base}/elevenlabs-default-voice-male" }
+data "aws_secretsmanager_secret" "telegram_bot_username" { name = "${local.secret_base}/telegram-bot-username" }
+data "aws_secretsmanager_secret" "allowed_origins" { name = "${local.secret_base}/allowed-origins" }
+data "aws_secretsmanager_secret" "apns_private_key" { name = "${local.secret_base}/apns-private-key" }
+data "aws_secretsmanager_secret" "apns_key_id" { name = "${local.secret_base}/apns-key-id" }
+data "aws_secretsmanager_secret" "apns_team_id" { name = "${local.secret_base}/apns-team-id" }
+data "aws_secretsmanager_secret" "apns_topic" { name = "${local.secret_base}/apns-topic" }
+data "aws_secretsmanager_secret" "apns_environment" { name = "${local.secret_base}/apns-environment" }
 
 resource "aws_ecs_cluster" "main" {
   name = "medi-nudge-${var.environment}"
@@ -78,21 +83,26 @@ resource "aws_ecs_task_definition" "api" {
 
     environment = [
       { name = "SCHEDULER_ENABLED", value = "false" },
-      { name = "AWS_REGION",        value = var.aws_region },
+      { name = "AWS_REGION", value = var.aws_region },
       { name = "AWS_S3_BUCKET_NAME", value = var.media_bucket_name },
     ]
 
     secrets = [
-      { name = "DATABASE_URL",              valueFrom = "${var.db_secret_arn}" },
-      { name = "JWT_SECRET_KEY",            valueFrom = data.aws_secretsmanager_secret.jwt_secret_key.arn },
-      { name = "OPENAI_API_KEY",            valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn },
-      { name = "TELEGRAM_BOT_TOKEN",        valueFrom = data.aws_secretsmanager_secret.telegram_bot_token.arn },
-      { name = "TELEGRAM_WEBHOOK_SECRET",              valueFrom = data.aws_secretsmanager_secret.telegram_webhook_secret.arn },
-      { name = "TELEGRAM_BOT_USERNAME",              valueFrom = data.aws_secretsmanager_secret.telegram_bot_username.arn },
-      { name = "ELEVENLABS_API_KEY",                 valueFrom = data.aws_secretsmanager_secret.elevenlabs_api_key.arn },
-      { name = "ELEVENLABS_DEFAULT_VOICE_FEMALE",    valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_female.arn },
-      { name = "ELEVENLABS_DEFAULT_VOICE_MALE",      valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_male.arn },
-      { name = "ALLOWED_ORIGINS",                    valueFrom = data.aws_secretsmanager_secret.allowed_origins.arn },
+      { name = "DATABASE_URL", valueFrom = "${var.db_secret_arn}" },
+      { name = "JWT_SECRET_KEY", valueFrom = data.aws_secretsmanager_secret.jwt_secret_key.arn },
+      { name = "OPENAI_API_KEY", valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn },
+      { name = "TELEGRAM_BOT_TOKEN", valueFrom = data.aws_secretsmanager_secret.telegram_bot_token.arn },
+      { name = "TELEGRAM_WEBHOOK_SECRET", valueFrom = data.aws_secretsmanager_secret.telegram_webhook_secret.arn },
+      { name = "TELEGRAM_BOT_USERNAME", valueFrom = data.aws_secretsmanager_secret.telegram_bot_username.arn },
+      { name = "ELEVENLABS_API_KEY", valueFrom = data.aws_secretsmanager_secret.elevenlabs_api_key.arn },
+      { name = "ELEVENLABS_DEFAULT_VOICE_FEMALE", valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_female.arn },
+      { name = "ELEVENLABS_DEFAULT_VOICE_MALE", valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_male.arn },
+      { name = "ALLOWED_ORIGINS", valueFrom = data.aws_secretsmanager_secret.allowed_origins.arn },
+      { name = "APNS_PRIVATE_KEY", valueFrom = data.aws_secretsmanager_secret.apns_private_key.arn },
+      { name = "APNS_KEY_ID", valueFrom = data.aws_secretsmanager_secret.apns_key_id.arn },
+      { name = "APNS_TEAM_ID", valueFrom = data.aws_secretsmanager_secret.apns_team_id.arn },
+      { name = "APNS_TOPIC", valueFrom = data.aws_secretsmanager_secret.apns_topic.arn },
+      { name = "APNS_ENVIRONMENT", valueFrom = data.aws_secretsmanager_secret.apns_environment.arn },
     ]
 
     healthCheck = {
@@ -138,19 +148,24 @@ resource "aws_ecs_task_definition" "scheduler" {
 
     environment = [
       { name = "SCHEDULER_ENABLED", value = "true" },
-      { name = "AWS_REGION",         value = var.aws_region },
+      { name = "AWS_REGION", value = var.aws_region },
       { name = "AWS_S3_BUCKET_NAME", value = var.media_bucket_name },
     ]
 
     secrets = [
-      { name = "DATABASE_URL",            valueFrom = var.db_secret_arn },
-      { name = "OPENAI_API_KEY",          valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn },
-      { name = "TELEGRAM_BOT_TOKEN",      valueFrom = data.aws_secretsmanager_secret.telegram_bot_token.arn },
-      { name = "TELEGRAM_WEBHOOK_SECRET",           valueFrom = data.aws_secretsmanager_secret.telegram_webhook_secret.arn },
-      { name = "TELEGRAM_BOT_USERNAME",           valueFrom = data.aws_secretsmanager_secret.telegram_bot_username.arn },
-      { name = "ELEVENLABS_API_KEY",              valueFrom = data.aws_secretsmanager_secret.elevenlabs_api_key.arn },
+      { name = "DATABASE_URL", valueFrom = var.db_secret_arn },
+      { name = "OPENAI_API_KEY", valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn },
+      { name = "TELEGRAM_BOT_TOKEN", valueFrom = data.aws_secretsmanager_secret.telegram_bot_token.arn },
+      { name = "TELEGRAM_WEBHOOK_SECRET", valueFrom = data.aws_secretsmanager_secret.telegram_webhook_secret.arn },
+      { name = "TELEGRAM_BOT_USERNAME", valueFrom = data.aws_secretsmanager_secret.telegram_bot_username.arn },
+      { name = "ELEVENLABS_API_KEY", valueFrom = data.aws_secretsmanager_secret.elevenlabs_api_key.arn },
       { name = "ELEVENLABS_DEFAULT_VOICE_FEMALE", valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_female.arn },
-      { name = "ELEVENLABS_DEFAULT_VOICE_MALE",   valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_male.arn },
+      { name = "ELEVENLABS_DEFAULT_VOICE_MALE", valueFrom = data.aws_secretsmanager_secret.elevenlabs_default_voice_male.arn },
+      { name = "APNS_PRIVATE_KEY", valueFrom = data.aws_secretsmanager_secret.apns_private_key.arn },
+      { name = "APNS_KEY_ID", valueFrom = data.aws_secretsmanager_secret.apns_key_id.arn },
+      { name = "APNS_TEAM_ID", valueFrom = data.aws_secretsmanager_secret.apns_team_id.arn },
+      { name = "APNS_TOPIC", valueFrom = data.aws_secretsmanager_secret.apns_topic.arn },
+      { name = "APNS_ENVIRONMENT", valueFrom = data.aws_secretsmanager_secret.apns_environment.arn },
     ]
 
     logConfiguration = {
@@ -206,13 +221,13 @@ resource "aws_ecs_task_definition" "migrate" {
 # ── ECS services ──────────────────────────────────────────────────────────────
 
 resource "aws_ecs_service" "api" {
-  name                               = "api-service"
-  cluster                            = aws_ecs_cluster.main.id
-  task_definition                    = aws_ecs_task_definition.api.arn
-  desired_count                      = var.api_desired_count
-  launch_type                        = "FARGATE"
-  health_check_grace_period_seconds  = 60
-  force_new_deployment               = false
+  name                              = "api-service"
+  cluster                           = aws_ecs_cluster.main.id
+  task_definition                   = aws_ecs_task_definition.api.arn
+  desired_count                     = var.api_desired_count
+  launch_type                       = "FARGATE"
+  health_check_grace_period_seconds = 60
+  force_new_deployment              = false
 
   network_configuration {
     subnets          = var.public_subnet_ids
@@ -259,6 +274,6 @@ resource "aws_ecs_service" "scheduler" {
   }
 }
 
-output "cluster_arn"       { value = aws_ecs_cluster.main.arn }
-output "cluster_name"      { value = aws_ecs_cluster.main.name }
+output "cluster_arn" { value = aws_ecs_cluster.main.arn }
+output "cluster_name" { value = aws_ecs_cluster.main.name }
 output "migrate_task_definition_arn" { value = aws_ecs_task_definition.migrate.arn }

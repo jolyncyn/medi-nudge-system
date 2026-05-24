@@ -19,7 +19,7 @@ function friendlyName(user) {
     return first.charAt(0).toUpperCase() + first.slice(1);
   }
   if (user.email) {
-    // "nurse.sarah@sgh.com.sg" → "Sarah"
+    // "nurse.sarah@medinudge.sg" → "Sarah"
     const handle = user.email.split("@")[0];
     const first = handle.split(/[._-]+/).filter(Boolean).pop() || handle;
     return first.charAt(0).toUpperCase() + first.slice(1);

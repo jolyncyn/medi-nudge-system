@@ -44,6 +44,8 @@ frontend/dist/
 # Secrets / keys
 *.pem
 *.key
+*.p8
+AuthKey_*.p8
 
 # Claude Code local state
 .claude/memory/

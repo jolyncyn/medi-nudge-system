@@ -12,8 +12,8 @@ DEMO_PASSWORD = "Demo1234!"
 
 ACCOUNTS = [
     # Nurse/Doctor accounts (web portal)
-    {"email": "nurse.sarah@sgh.com.sg", "full_name": "Sarah Tan (Nurse)", "role": "admin"},
-    {"email": "dr.lim@sgh.com.sg", "full_name": "Dr. Lim Wei Ming", "role": "admin"},
+    {"email": "nurse.sarah@medinudge.sg", "full_name": "Sarah Tan (Nurse)", "role": "admin"},
+    {"email": "dr.lim@medinudge.sg", "full_name": "Dr. Lim Wei Ming", "role": "admin"},
 
     # Patient accounts (iOS app) — linked by phone_number lookup
     {"email": "tanweiliang@patient.medinudge.sg", "full_name": "Tan Wei Liang", "role": "patient", "phone": "+6591234001"},
@@ -320,8 +320,106 @@ def seed_demo_notes():
         db.close()
 
 
+def fix_recent_dose_logs():
+    """Fix the last 7 days of dose logs for demo patients to show realistic adherence.
+
+    Seeds 5 taken / 2 missed per medication per patient (missed on days 3 and 6 ago)
+    so iOS 7-day charts display a non-zero graph instead of all-missed.
+    """
+    TARGET_PHONES = [
+        "+6591234001",  # Tan Wei Liang
+        "+6591234005",  # Chen Mei Fong
+        "+6591234011",  # Tan Mei Ling (own patient profile)
+    ]
+    MISSED_DAY_OFFSETS = {3, 6}  # 2 missed out of 7 days
+
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        updated = 0
+        created = 0
+
+        for phone in TARGET_PHONES:
+            patient = db.query(Patient).filter(Patient.phone_number == phone).first()
+            if not patient:
+                print(f"  WARNING: patient {phone} not found, skipping")
+                continue
+
+            pms = (
+                db.query(PatientMedication)
+                .filter(
+                    PatientMedication.patient_id == patient.id,
+                    PatientMedication.is_active == True,  # noqa: E712
+                )
+                .all()
+            )
+
+            for pm in pms:
+                daily = 2 if pm.frequency == "twice_daily" else 1
+                last_taken_at = pm.last_taken_at
+
+                for day_offset in range(1, 8):
+                    status = "missed" if day_offset in MISSED_DAY_OFFSETS else "taken"
+                    day_base = (now - timedelta(days=day_offset)).replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+
+                    for dose_num in range(daily):
+                        hour = 8 if dose_num == 0 else 20
+                        log_time = day_base.replace(hour=hour)
+                        day_start = day_base.replace(hour=hour)
+                        day_end = day_start + timedelta(hours=1)
+
+                        existing = (
+                            db.query(DoseLog)
+                            .filter(
+                                DoseLog.patient_medication_id == pm.id,
+                                DoseLog.logged_at >= day_start,
+                                DoseLog.logged_at < day_end,
+                            )
+                            .first()
+                        )
+
+                        if existing:
+                            existing.status = status
+                            existing.logged_at = log_time
+                            updated += 1
+                        else:
+                            db.add(
+                                DoseLog(
+                                    patient_id=patient.id,
+                                    medication_id=pm.medication_id,
+                                    patient_medication_id=pm.id,
+                                    status=status,
+                                    source="system_detected",
+                                    logged_at=log_time,
+                                )
+                            )
+                            created += 1
+
+                        if status == "taken" and (
+                            last_taken_at is None or log_time > last_taken_at
+                        ):
+                            last_taken_at = log_time
+
+                pm.last_taken_at = last_taken_at
+
+            print(
+                f"  {patient.full_name}: fixed last 7 days "
+                f"(updated={updated}, created={created})"
+            )
+            updated = 0
+            created = 0
+
+        db.commit()
+        print("  Done fixing recent dose logs.")
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     seed()
     seed_tan_mei_ling_self_profile()
     seed_caregiver_links()
     seed_demo_notes()
+    fix_recent_dose_logs()
