@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.models.models import Patient, PatientMedication, Medication, DoseLog
 
 logger = logging.getLogger(__name__)
@@ -12,16 +13,16 @@ CACHE_TTL_HOURS = 24
 
 
 def generate_patient_summary(db: Session, patient_id: int, force_refresh: bool = False) -> dict:
-    now = datetime.utcnow()
+    now = now_sgt()
 
     if not force_refresh and patient_id in _cache:
         summary, generated_at = _cache[patient_id]
         if (now - generated_at).total_seconds() < CACHE_TTL_HOURS * 3600:
-            return {"summary": summary, "generated_at": generated_at.isoformat() + "Z", "cached": True}
+            return {"summary": summary, "generated_at": generated_at.isoformat(), "cached": True}
 
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
-        return {"summary": "Patient not found.", "generated_at": now.isoformat() + "Z", "cached": False}
+        return {"summary": "Patient not found.", "generated_at": now.isoformat(), "cached": False}
 
     since_30d = now - timedelta(days=30)
     dose_logs = (
@@ -131,4 +132,4 @@ def generate_patient_summary(db: Session, patient_id: int, force_refresh: bool =
         summary = f"Unable to generate AI summary. Overall 30-day adherence: {overall_rate}%."
 
     _cache[patient_id] = (summary, now)
-    return {"summary": summary, "generated_at": now.isoformat() + "Z", "cached": False}
+    return {"summary": summary, "generated_at": now.isoformat(), "cached": False}

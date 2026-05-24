@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
+from app.core.timezone import as_sgt_naive, now_sgt
 from app.core.security import get_current_user
 from app.models.models import DoseLog, Medication, PatientMedication, Patient, DispensingRecord, User
 from app.schemas.schemas import (
@@ -129,7 +130,7 @@ def create_dose_event(
     if not patient_medication:
         raise HTTPException(status_code=404, detail="PatientMedication not found")
 
-    logged_at = payload.logged_at or payload.scheduled_time or datetime.utcnow()
+    logged_at = as_sgt_naive(payload.logged_at or payload.scheduled_time) or now_sgt()
     event = DoseLog(
         patient_id=patient_id,
         medication_id=patient_medication.medication_id,
@@ -237,7 +238,7 @@ def import_dispensing_csv(
 
     for row in reader:
         try:
-            dispensed_at = datetime.fromisoformat(row["dispensed_at"])
+            dispensed_at = as_sgt_naive(datetime.fromisoformat(row["dispensed_at"]))
             # Dedup check
             exists = db.query(DispensingRecord).filter(
                 DispensingRecord.patient_id == int(row["patient_id"]),

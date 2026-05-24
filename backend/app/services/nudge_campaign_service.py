@@ -15,6 +15,7 @@ from app.models.models import (
 )
 from app.services import nudge_generator, telegram_service, escalation_service, tts_service
 from app.core.config import settings
+from app.core.timezone import now_sgt
 
 import logging
 logger = logging.getLogger(__name__)
@@ -183,13 +184,13 @@ def fire_campaign(db: Session, campaign: NudgeCampaign) -> NudgeCampaign:
 
     if out_msg is None:
         _transition(db, campaign, "sent")
-        campaign.last_sent_at = datetime.utcnow()
+        campaign.last_sent_at = now_sgt()
         db.commit()
     elif out_msg.status == "failed":
         _transition(db, campaign, "failed")
     else:
         _transition(db, campaign, "sent")
-        campaign.last_sent_at = datetime.utcnow()
+        campaign.last_sent_at = now_sgt()
         db.commit()
 
     if campaign.attempt_number >= settings.MAX_NUDGE_ATTEMPTS and campaign.status == "sent":
@@ -214,7 +215,7 @@ def fire_due_campaigns(db: Session | None = None) -> dict:
             db.query(NudgeCampaign)
             .filter(
                 NudgeCampaign.status == "pending",
-                NudgeCampaign.fire_at <= datetime.utcnow(),
+                NudgeCampaign.fire_at <= now_sgt(),
             )
             .all()
         )
@@ -249,7 +250,7 @@ def create_and_send(
     """
     campaign = create_campaign(
         db=db, patient=patient, medication=medication,
-        days_overdue=days_overdue, fire_at=datetime.utcnow(), attempt=attempt,
+        days_overdue=days_overdue, fire_at=now_sgt(), attempt=attempt,
     )
     if campaign.status == "pending":
         fire_campaign(db, campaign)

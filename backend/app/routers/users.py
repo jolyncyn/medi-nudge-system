@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import CaregiverPatientLink, Patient, User, UserDeviceToken
@@ -68,7 +69,7 @@ def register_my_device_token(
     user: User = Depends(get_current_user),
 ):
     row = db.query(UserDeviceToken).filter(UserDeviceToken.token == payload.token).first()
-    now = datetime.utcnow()
+    now = now_sgt()
     bundle_id = _ios_bundle_id()
     if row:
         row.user_id = user.id

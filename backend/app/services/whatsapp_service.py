@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.models.models import OutboundMessage
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def send_text(
         content=body,
         delivery_mode="text",
         status="sent",
-        sent_at=datetime.utcnow(),
+        sent_at=now_sgt(),
     )
     db.add(msg)
     db.flush()  # get id before Twilio call to ensure record exists

@@ -49,7 +49,7 @@ def transition_escalation(db: Session, case: EscalationCase, new_status: str) ->
         )
     case.status = new_status
     if new_status == "resolved":
-        case.resolved_at = datetime.utcnow()
+        case.resolved_at = now_sgt()
     db.commit()
     db.refresh(case)
     return case

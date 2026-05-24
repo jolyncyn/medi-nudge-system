@@ -42,9 +42,11 @@ class TestGenerateInviteToken:
         from app.services.onboarding_service import generate_invite_token
         patient = _make_patient(db, "+6591000001")
 
-        before = datetime.utcnow()
+        from app.core.timezone import now_sgt
+
+        before = now_sgt()
         result = generate_invite_token(db, patient)
-        after = datetime.utcnow()
+        after = now_sgt()
 
         from app.models.models import OnboardingToken
         token_row = db.query(OnboardingToken).filter(OnboardingToken.patient_id == patient.id).first()

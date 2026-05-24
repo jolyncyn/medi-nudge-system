@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session, joinedload
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.core.database import SessionLocal
 from app.models.models import Patient, PatientMedication
 from app.services import telegram_service, tts_service
@@ -157,7 +158,7 @@ def _send_due_reminders(
                 med_name = pm.medication.name if pm.medication else f"Medication #{pm.medication_id}"
                 caregiver_alert_meds.append(med_name)
         # Always update last_reminded_at AFTER the window check
-        pm.last_reminded_at = datetime.utcnow()
+        pm.last_reminded_at = now_sgt()
 
     db.commit()
 

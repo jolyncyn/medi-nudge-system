@@ -7,6 +7,7 @@ from datetime import datetime
 import httpx
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.models.models import OutboundMessage
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ def send_text(
         content=body,
         delivery_mode="text",
         status="sent",
-        sent_at=datetime.utcnow(),
+        sent_at=now_sgt(),
     )
     db.add(msg)
     db.flush()
@@ -93,7 +94,7 @@ def send_voice(
         content=f"[voice:{ogg_path}]",
         delivery_mode="audio",
         status="sent",
-        sent_at=datetime.utcnow(),
+        sent_at=now_sgt(),
     )
     db.add(msg)
     db.flush()
@@ -154,7 +155,7 @@ def send_keyboard(
         content=body,
         delivery_mode="text",
         status="sent",
-        sent_at=datetime.utcnow(),
+        sent_at=now_sgt(),
     )
     db.add(msg)
     db.flush()

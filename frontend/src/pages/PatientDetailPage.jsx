@@ -8,6 +8,7 @@ import {
   triggerPatientNudge, triggerPatientReminder, getPatientAiSummary,
   getCaregiverNotes, createCaregiverNote,
 } from "../lib/api";
+import { datetimeLocalToSgtIso, formatSgtDate, formatSgtDateTime, nowSgtDatetimeLocal } from "../lib/time";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
 
 const RISK_CHIP = {
@@ -49,7 +50,7 @@ export default function PatientDetailPage() {
   // Dispensing
   const [showDispensing, setShowDispensing] = useState(false);
   const [dispensingForm, setDispensingForm] = useState({
-    medication_id: "", dispensed_at: new Date().toISOString().slice(0, 16), days_supply: 30, quantity: "",
+    medication_id: "", dispensed_at: nowSgtDatetimeLocal(), days_supply: 30, quantity: "",
   });
   const [dispensingSaving, setDispensingSaving] = useState(false);
 
@@ -157,8 +158,8 @@ export default function PatientDetailPage() {
   const openAssignMed = async () => { try { const { data } = await getMedications(); setCatalogMeds([...data].sort((a, b) => { const aS = suggestedMedIds.has(a.id) ? 0 : 1; const bS = suggestedMedIds.has(b.id) ? 0 : 1; return aS !== bS ? aS - bS : a.name.localeCompare(b.name); })); } catch { /* no-op */ } setAssignForm({ medication_id: "", dosage: "", refill_interval_days: "", frequency: "once_daily", reminder_times: "" }); setShowAssignMed(true); };
   const handleAssignMed = async (e) => { e.preventDefault(); setAssigningSaving(true); try { await assignMedication(id, { medication_id: Number(assignForm.medication_id), dosage: assignForm.dosage || null, refill_interval_days: assignForm.refill_interval_days ? Number(assignForm.refill_interval_days) : null, frequency: assignForm.frequency, reminder_times: assignForm.reminder_times ? assignForm.reminder_times.split(",").map((t) => t.trim()).filter(Boolean) : null }); setShowAssignMed(false); await reload(); } catch { /* no-op */ } finally { setAssigningSaving(false); } };
 
-  const openDispensing = async () => { try { const { data } = await getMedications(); setCatalogMeds(data); } catch { /* no-op */ } setDispensingForm({ medication_id: "", dispensed_at: new Date().toISOString().slice(0, 16), days_supply: 30, quantity: "" }); setShowDispensing(true); };
-  const handleDispensing = async (e) => { e.preventDefault(); setDispensingSaving(true); try { await createDispensingRecord({ patient_id: Number(id), medication_id: Number(dispensingForm.medication_id), dispensed_at: new Date(dispensingForm.dispensed_at).toISOString(), days_supply: Number(dispensingForm.days_supply), quantity: dispensingForm.quantity ? Number(dispensingForm.quantity) : null, source: "manual" }); setShowDispensing(false); await reload(); } catch { /* no-op */ } finally { setDispensingSaving(false); } };
+  const openDispensing = async () => { try { const { data } = await getMedications(); setCatalogMeds(data); } catch { /* no-op */ } setDispensingForm({ medication_id: "", dispensed_at: nowSgtDatetimeLocal(), days_supply: 30, quantity: "" }); setShowDispensing(true); };
+  const handleDispensing = async (e) => { e.preventDefault(); setDispensingSaving(true); try { await createDispensingRecord({ patient_id: Number(id), medication_id: Number(dispensingForm.medication_id), dispensed_at: datetimeLocalToSgtIso(dispensingForm.dispensed_at), days_supply: Number(dispensingForm.days_supply), quantity: dispensingForm.quantity ? Number(dispensingForm.quantity) : null, source: "manual" }); setShowDispensing(false); await reload(); } catch { /* no-op */ } finally { setDispensingSaving(false); } };
 
   if (loading) return <div className="p-8 font-body text-on-surface/30">Loading...</div>;
   if (!patient) return <div className="p-8 font-body text-error">Patient not found</div>;
@@ -188,7 +189,7 @@ export default function PatientDetailPage() {
 
   const missedDays = {};
   doseHistory.filter(d => d.status === "missed").forEach(d => {
-    const day = new Date(d.logged_at).toLocaleDateString(undefined, { weekday: "long" });
+    const day = formatSgtDate(d.logged_at, { weekday: "long" });
     missedDays[day] = (missedDays[day] || 0) + 1;
   });
   const topMissedDays = Object.entries(missedDays).sort((a, b) => b[1] - a[1]).slice(0, 2);
@@ -199,7 +200,7 @@ export default function PatientDetailPage() {
   const dailyTrend = (() => {
     const byDay = {};
     doseHistory.forEach(d => {
-      const day = new Date(d.logged_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      const day = formatSgtDate(d.logged_at, { month: "short", day: "numeric" });
       if (!byDay[day]) byDay[day] = { taken: 0, missed: 0 };
       if (d.status === "taken") byDay[day].taken++;
       else byDay[day].missed++;
@@ -423,7 +424,7 @@ export default function PatientDetailPage() {
               </button>
             )}
             {aiGeneratedAt && (
-              <p className="text-[10px] text-on-surface/30 mt-3">Generated {new Date(aiGeneratedAt).toLocaleString()}</p>
+              <p className="text-[10px] text-on-surface/30 mt-3">Generated {formatSgtDateTime(aiGeneratedAt)}</p>
             )}
           </>
         )}
@@ -520,7 +521,7 @@ export default function PatientDetailPage() {
                     "bg-surface-container-highest text-on-surface/60"
                   }`}>{n.category.replace(/_/g, " ")}</span>
                   <span className="text-[9px] text-on-surface/40">{n.author_name} ({n.author_role})</span>
-                  <span className="text-[9px] text-on-surface/30 ml-auto">{new Date(n.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-[9px] text-on-surface/30 ml-auto">{formatSgtDateTime(n.created_at)}</span>
                 </div>
                 {n.content && <p className="text-xs text-on-surface/70">{n.content}</p>}
               </div>
@@ -615,7 +616,7 @@ export default function PatientDetailPage() {
                         <h4 className="text-sm font-bold text-on-surface">{medName}</h4>
                         <p className="text-xs text-muted mt-0.5">{r.days_supply}d supply{r.quantity ? ` | ${r.quantity} units` : ""} | {r.source}</p>
                       </div>
-                      <span className="text-[10px] text-muted">{new Date(r.dispensed_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+                      <span className="text-[10px] text-muted">{formatSgtDate(r.dispensed_at, { month: "short", day: "numeric", year: "numeric" })}</span>
                     </div>
                   </div>
                 );
@@ -677,7 +678,7 @@ export default function PatientDetailPage() {
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${d.status === "taken" ? "bg-tertiary-container" : "bg-error"}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-on-surface truncate">{d.medication_name}</p>
-                    <p className="text-[10px] text-muted">{new Date(d.logged_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-[10px] text-muted">{formatSgtDateTime(d.logged_at)}</p>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${d.status === "taken" ? "bg-green-container text-green" : "bg-error-container text-on-error-container"}`}>{d.status}</span>
                 </div>

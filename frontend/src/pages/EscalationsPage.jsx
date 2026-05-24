@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getEscalations, updateEscalation } from "../lib/api";
+import { formatSgtDate } from "../lib/time";
 
 const PRIORITY_CHIP = {
   urgent: "bg-error-container text-on-error-container",
@@ -127,7 +128,7 @@ export default function EscalationsPage() {
                       </span>
                     </div>
                     <span className="font-body text-xs text-on-surface/40">
-                      {new Date(c.opened_at).toLocaleDateString()}
+                      {formatSgtDate(c.opened_at)}
                     </span>
                   </div>
                   <p className="font-body text-xs text-on-surface/50 mt-1.5 truncate">{c.reason}</p>
