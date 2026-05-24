@@ -3,6 +3,11 @@
 - The React app lives under `s3://medi-nudge-frontend-staging/portal/`.
 - ALWAYS sync frontend build to `/portal/` prefix: `aws s3 sync dist s3://medi-nudge-frontend-staging/portal/`
 - NEVER sync to the S3 root — it overwrites the landing page.
+- `vite.config.js` uses `base: "/portal/"` so the React app serves correctly from `/portal/`.
+- The landing page "For Clinicians" button routes to `/portal/index.html`.
+- Old React root files (`assets/`, `favicon.svg`, `icons.svg`) were cleaned from S3 root because they were overwriting/conflicting with the landing page.
+- The old `adheris.png` hover image was replaced with the iOS QR code for TestFlight download.
+- `.env.development` was removed after local AWS-backend testing; do not re-add temporary env files for deploys.
 
 ## DEPLOYMENT FACTS (DO NOT DEVIATE)
 - AWS profile: agency_admin-354918370110
@@ -12,6 +17,8 @@
 - No new IP allowlisting needed. Ever.
 - CloudFront URL: https://d2osdk2gdq7n3i.cloudfront.net
 - Deploy steps are in CLAUDE.md under "Deploy". Follow those EXACTLY.
+- Frontend deploy target: `s3://medi-nudge-frontend-staging/portal/` ONLY.
+- Root `index.html` is the product landing page and must never be overwritten by the React app.
 
 # Project State
 
@@ -28,8 +35,10 @@ Current phase: FINAL SPRINT — pitch day is 25 May 2026 at 9am SGT. Today is 24
 - EscalationsPage + PatientsPage: color-patched to Adheris tokens
 - All MediNudge references renamed to Adheris
 - TableSortHeader.jsx added as shared component
+- Claude Design iterations went through v3.0 → v3.5 to finalise the portal styling.
+- Fixed legibility bugs: Active pill, 80%+ adherence ring, text-outline labels.
 - Dashboard with "Doses Taken" column (colour-coded %) + ⚠️ icon for critical med misses
-- High Risk Patients + Pending Refills cards in sidebar below Pending Escalations
+- Needs Attention + Pending Refills cards in sidebar below Pending Escalations
 - Patient detail page: AI Insights (Summary + "If You Miss" tabs), Adherence Trend chart, "What's Impacting Adherence" cards, Care Notes section
 - Active Medications section with CRITICAL badges
 - Pharmacy Refill Timeline (left col) + Doses by Medication + Recent Activity (right col)
@@ -55,9 +64,15 @@ Current phase: FINAL SPRINT — pitch day is 25 May 2026 at 9am SGT. Today is 24
 - APNs push notification service: ES256 JWT signing, HTTP/2 delivery, JWT caching, bad-token deactivation
 - POST /api/users/me/test-push endpoint (authenticated, safe APNs test delivery)
 - APNs secrets (APNS_PRIVATE_KEY, APNS_KEY_ID, APNS_TEAM_ID, APNS_TOPIC, APNS_ENVIRONMENT) injected into ECS task definitions :2 via Secrets Manager
+- APNs secret names in AWS Secrets Manager:
+  - `/medi-nudge/staging/apns-private-key`
+  - `/medi-nudge/staging/apns-key-id`
+  - `/medi-nudge/staging/apns-team-id`
+  - `/medi-nudge/staging/apns-topic`
+  - `/medi-nudge/staging/apns-environment`
 - All domain timestamps normalised to SGT (Asia/Singapore) — backend now_sgt() + frontend time.js formatSgtDate/DateTime
 - Nurse/doctor email domains changed to @medinudge.sg (was @sgh.com.sg) — live DB updated
-- tg_51789857 and tg_1746763759 Telegram stubs hidden from patient registry list
+- Incomplete Telegram self-registration patients hidden from registry/dashboard via onboarding-state visibility rule (`self_*` draft states), not hardcoded patient names
 
 ## What is commented out / hidden
 
@@ -100,9 +115,19 @@ Current phase: FINAL SPRINT — pitch day is 25 May 2026 at 9am SGT. Today is 24
 - PatientDetailPage, DashboardPage, EscalationsPage: all `new Date().toLocaleString()` replaced with explicit SGT formatting
 
 ### Patient Registry Cleanup
-- `tg_51789857` and `tg_1746763759` (Telegram onboarding stubs) hidden from `/api/patients` list via `notin_` filter
-- Records not deleted — just excluded from registry. Count is also correct (filtered from total).
+- Incomplete Telegram self-registration draft records are hidden from `/api/patients` and `/api/dashboard/summary`
+- Visibility rule excludes onboarding states: `self_lang`, `self_consent`, `self_name`, `self_nric`, `self_condition`, `self_registering`
+- Records are not deleted — they are excluded from care-team registry/dashboard until they progress out of self-registration draft states
+- Dashboard summary consistency covered: hidden drafts do not affect adherence, high-risk/needs-attention count, patient compliance map, at-risk patients, or pending escalations
 - Unit test added: `test_patient_registry.py`
+
+### Landing Page / Portal Deployment Split
+- Adheris product landing page deployed as root `index.html` on S3/CloudFront
+- React web portal moved under `/portal/` with Vite `base: "/portal/"`
+- Landing page "For Clinicians" CTA routes to `/portal/index.html`
+- Old React root assets cleaned from S3 root so they no longer overwrite or conflict with the landing page
+- TestFlight/iOS QR code replaced the old `adheris.png` hover image
+- Deployment rule established: frontend app deploys to `s3://medi-nudge-frontend-staging/portal/` only; root is landing page only
 
 ---
 
@@ -210,12 +235,11 @@ Current phase: FINAL SPRINT — pitch day is 25 May 2026 at 9am SGT. Today is 24
 ## What is in progress / to build next (23-24 May)
 
 ### HIGH PRIORITY
-1. HTML landing page updates — color scheme to match Jordan's design, button routing (TestFlight + web portal), remove dash from tagline
-2. Patient detail page layout polish — current layout still needs visual improvement
-3. Focus demo on Tan Wei Liang as main patient profile (most complete dataset + caregiver notes)
-4. Practice end-to-end demo flow following caregiver journey workflow
-5. iOS app: PM to implement persona routing using role/patient_id from login response
-6. iOS app: PM to build caregiver notes UI (POST/GET /api/patients/{id}/caregiver-notes)
+1. End-to-end demo rehearsal with Tan Wei Liang as main patient profile (most complete dataset + caregiver notes)
+2. iOS app: verify persona/profile switcher uses `accessible_patients` and selected `patient_id`
+3. iOS app: verify caregiver notes UI uses POST/GET `/api/patients/{id}/caregiver-notes`
+4. iOS app: register device token + call POST `/api/users/me/test-push` to verify APNs delivery
+5. Practice final story against judging criteria: problem-solution fit, market validation, prototype quality, storytelling
 
 ### MEDIUM PRIORITY
 - Uncomment hidden sections — decide which to show for pitch (Voice Nudge? Nudge Campaigns? Hero grid?)
@@ -304,9 +328,9 @@ Current phase: FINAL SPRINT — pitch day is 25 May 2026 at 9am SGT. Today is 24
 - ✅ Remove non-functional buttons (OCR, nudge triggers, Telegram QR)
 
 ### HIGH PRIORITY (must do before 25 May)
-1. HTML landing page — color scheme, button routing, remove dash from tagline
-2. End-to-end demo rehearsal with Tan Wei Liang as main patient
-3. iOS: PM to register device token + call POST /api/users/me/test-push to verify APNs delivery
+1. End-to-end demo rehearsal with Tan Wei Liang as main patient
+2. iOS: PM to register device token + call POST /api/users/me/test-push to verify APNs delivery
+3. Confirm landing page → `/portal/` route and TestFlight QR both work from CloudFront
 
 ### MEDIUM PRIORITY (nice to have)
 - Uncomment hidden sections — decide which to show
