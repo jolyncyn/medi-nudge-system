@@ -2,7 +2,7 @@ from app.core.timezone import now_sgt
 from app.models.models import DoseLog, EscalationCase, Medication, Patient
 
 
-def test_patient_registry_hides_known_incomplete_telegram_patients(client, auth_headers, db):
+def test_patient_registry_hides_incomplete_self_registration_patients(client, auth_headers, db):
     visible = Patient(
         full_name="Visible Patient",
         phone_number="+6591999001",
@@ -10,15 +10,15 @@ def test_patient_registry_hides_known_incomplete_telegram_patients(client, auth_
         is_active=True,
     )
     hidden_one = Patient(
-        full_name="tg_51789857",
+        full_name="Draft Self Registration",
         phone_number="+6591999002",
         onboarding_state="self_consent",
         is_active=True,
     )
     hidden_two = Patient(
-        full_name="tg_1746763759",
+        full_name="Incomplete Self Registration",
         phone_number="+6591999003",
-        onboarding_state="self_consent",
+        onboarding_state="self_name",
         is_active=True,
     )
     db.add_all([visible, hidden_one, hidden_two])
@@ -30,8 +30,8 @@ def test_patient_registry_hides_known_incomplete_telegram_patients(client, auth_
     body = resp.json()
     names = {patient["full_name"] for patient in body["items"]}
     assert "Visible Patient" in names
-    assert "tg_51789857" not in names
-    assert "tg_1746763759" not in names
+    assert "Draft Self Registration" not in names
+    assert "Incomplete Self Registration" not in names
     assert body["total"] == 1
 
 
@@ -44,9 +44,9 @@ def test_dashboard_summary_excludes_hidden_registry_patients(client, auth_header
         is_active=True,
     )
     hidden = Patient(
-        full_name="tg_51789857",
+        full_name="Draft Self Registration",
         phone_number="+6591999002",
-        onboarding_state="complete",
+        onboarding_state="self_consent",
         risk_level="high",
         is_active=True,
     )

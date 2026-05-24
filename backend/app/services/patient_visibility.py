@@ -3,10 +3,17 @@ from sqlalchemy.orm import Query, Session
 
 from app.models.models import Patient
 
-HIDDEN_REGISTRY_PATIENT_NAMES = {"tg_51789857", "tg_1746763759"}
+INCOMPLETE_SELF_REGISTRATION_STATES = {
+    "self_lang",
+    "self_consent",
+    "self_name",
+    "self_nric",
+    "self_condition",
+    "self_registering",
+}
 
 
 def visible_patients_query(db: Session) -> Query:
     return db.query(Patient).filter(
-        Patient.full_name.notin_(HIDDEN_REGISTRY_PATIENT_NAMES)
+        Patient.onboarding_state.notin_(INCOMPLETE_SELF_REGISTRATION_STATES)
     )
