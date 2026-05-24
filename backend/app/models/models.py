@@ -9,10 +9,11 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import (
     Boolean, DateTime, Float, ForeignKey, Integer,
-    JSON, String, Text, UniqueConstraint, func,
+    JSON, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+from app.core.timezone import now_sgt
 
 
 # ---------------------------------------------------------------------------
@@ -48,8 +49,8 @@ class Patient(Base):
     selected_voice_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # ElevenLabs voice ID
     # Conversation state — tracks what the bot is waiting for from this patient
     pending_action: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # e.g. "voice_consent"
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, onupdate=now_sgt, nullable=False)
 
     medications: Mapped[list["PatientMedication"]] = relationship("PatientMedication", back_populates="patient")
     dispensing_records: Mapped[list["DispensingRecord"]] = relationship("DispensingRecord", back_populates="patient")
@@ -68,7 +69,7 @@ class Condition(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     medications: Mapped[list["ConditionMedication"]] = relationship("ConditionMedication", back_populates="condition")
 
@@ -100,7 +101,7 @@ class Medication(Base):
     default_refill_days: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     is_critical: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     missed_dose_info: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     patient_medications: Mapped[list["PatientMedication"]] = relationship("PatientMedication", back_populates="medication")
     dispensing_records: Mapped[list["DispensingRecord"]] = relationship("DispensingRecord", back_populates="medication")
@@ -126,7 +127,7 @@ class PatientMedication(Base):
     last_reminded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_taken_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
     med_info_card_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     patient: Mapped["Patient"] = relationship("Patient", back_populates="medications")
@@ -152,7 +153,7 @@ class DispensingRecord(Base):
     days_supply: Mapped[int] = mapped_column(Integer, nullable=False)
     quantity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(50), default="manual", nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     patient: Mapped["Patient"] = relationship("Patient", back_populates="dispensing_records")
     medication: Mapped["Medication"] = relationship("Medication", back_populates="dispensing_records")
@@ -185,8 +186,8 @@ class NudgeCampaign(Base):
     language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
     response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     response_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, onupdate=now_sgt, nullable=False)
     last_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     fire_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     campaign_type: Mapped[str] = mapped_column(String(50), default="refill_reminder", nullable=False)
@@ -221,8 +222,8 @@ class EscalationCase(Base):
     assigned_to: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, onupdate=now_sgt, nullable=False)
 
     patient: Mapped["Patient"] = relationship("Patient", back_populates="escalation_cases")
     nudge_campaign: Mapped[Optional["NudgeCampaign"]] = relationship("NudgeCampaign", back_populates="escalation_cases")
@@ -241,7 +242,7 @@ class CaregiverNote(Base):
     author_role: Mapped[str] = mapped_column(String(20), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     patient: Mapped["Patient"] = relationship("Patient")
 
@@ -261,7 +262,7 @@ class OutboundMessage(Base):
     delivery_mode: Mapped[str] = mapped_column(String(20), default="text", nullable=False)
     audio_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="sent", nullable=False)
-    sent_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     campaign: Mapped[Optional["NudgeCampaign"]] = relationship("NudgeCampaign", back_populates="outbound_messages")
@@ -281,7 +282,7 @@ class DoseLog(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)  # taken | missed | skipped
     source: Mapped[str] = mapped_column(String(30), nullable=False)  # patient_reply | campaign_confirmed | caregiver | system_detected
     logged_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     patient: Mapped["Patient"] = relationship("Patient")
     medication: Mapped["Medication"] = relationship("Medication")
@@ -314,7 +315,7 @@ class PrescriptionScan(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
     confirmed_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
     uploaded_by_ip: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # SHA-256 hashed
 
     patient: Mapped["Patient"] = relationship("Patient", back_populates="prescription_scans")
@@ -350,7 +351,7 @@ class User(Base):
     patient_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("patients.id"), nullable=True)
     own_patient_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("patients.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     caregiver_patient_links: Mapped[list["CaregiverPatientLink"]] = relationship(
         "CaregiverPatientLink",
@@ -375,8 +376,8 @@ class UserDeviceToken(Base):
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
     bundle_id: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, onupdate=now_sgt, nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="device_tokens")
 
@@ -393,7 +394,7 @@ class CaregiverPatientLink(Base):
     caregiver_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     patient_id: Mapped[int] = mapped_column(Integer, ForeignKey("patients.id"), nullable=False)
     link_relationship: Mapped[Optional[str]] = mapped_column("relationship", String(50), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     caregiver_user: Mapped["User"] = relationship("User", back_populates="caregiver_patient_links")
     patient: Mapped["Patient"] = relationship("Patient")
@@ -419,7 +420,7 @@ class VoiceProfile(Base):
     patient_consent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     donor_consent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
 
     patient: Mapped["Patient"] = relationship("Patient")
 
@@ -432,7 +433,7 @@ class OnboardingToken(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_sgt, nullable=False)
     is_caregiver: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # True = caregiver invite token
 
     patient: Mapped["Patient"] = relationship("Patient", back_populates="onboarding_tokens")

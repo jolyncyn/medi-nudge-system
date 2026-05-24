@@ -6,6 +6,7 @@ Daily job: for each medication activated 3-4 days ago, send a one-time
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from app.core.timezone import now_sgt
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def run_side_effect_checkin_check(
             # Immediate trigger for a specific patient — skip the date window
             query = query.filter(PatientMedication.patient_id == patient_id)
         else:
-            now = datetime.utcnow()
+            now = now_sgt()
             window_start = now - timedelta(days=4)
             window_end = now - timedelta(days=3)
             query = query.filter(

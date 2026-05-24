@@ -15,6 +15,7 @@ import secrets
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.core.config import settings, hash_sha256
+from app.core.timezone import now_sgt
 from app.models.models import EscalationCase, OnboardingToken, Patient, PatientMedication
 from app.services import telegram_service, escalation_service, sms_service
 
@@ -333,7 +334,7 @@ def generate_invite_token(db: Session, patient: Patient) -> dict:
     Create a one-time OnboardingToken and return the deep-link + base64 QR PNG.
     Existing unused tokens for this patient are invalidated first.
     """
-    now = datetime.utcnow()
+    now = now_sgt()
     existing = (
         db.query(OnboardingToken)
         .filter(OnboardingToken.patient_id == patient.id, OnboardingToken.used_at.is_(None))
@@ -374,7 +375,7 @@ def generate_caregiver_invite_token(db: Session, patient: Patient) -> str:
     Create a one-time caregiver OnboardingToken and return the deep-link URL.
     Old unused caregiver tokens for this patient are invalidated first.
     """
-    now = datetime.utcnow()
+    now = now_sgt()
     existing = (
         db.query(OnboardingToken)
         .filter(
@@ -428,9 +429,9 @@ def send_caregiver_invite(db: Session, patient: Patient) -> bool:
 
 def validate_and_consume_token(db: Session, raw_token: str) -> "Patient | None":
     row = db.query(OnboardingToken).filter(OnboardingToken.token == raw_token).first()
-    if not row or row.used_at is not None or datetime.utcnow() > row.expires_at:
+    if not row or row.used_at is not None or now_sgt() > row.expires_at:
         return None
-    row.used_at = datetime.utcnow()
+    row.used_at = now_sgt()
     db.commit()
     db.refresh(row)
     return row.patient
@@ -554,7 +555,7 @@ def _handle_self_lang(db: Session, patient: Patient, text: str) -> None:
 def _handle_self_consent(db: Session, patient: Patient, text: str) -> None:
     lang = patient.language_preference or "en"
     if any(k in text for k in ("yes", "ya", "好", "同意", "setuju")):
-        patient.consent_obtained_at = datetime.utcnow()
+        patient.consent_obtained_at = now_sgt()
         patient.consent_channel = "telegram"
         patient.onboarding_state = "self_name"
         db.commit()
@@ -691,7 +692,7 @@ def _send_consent(db: Session, patient: Patient) -> None:
 def _handle_invite_reply(db: Session, patient: Patient, text: str) -> None:
     if any(k in text for k in ("yes", "ya", "好", "同意", "setuju")):
         patient.onboarding_state = "consent_pending"
-        patient.consent_obtained_at = datetime.utcnow()
+        patient.consent_obtained_at = now_sgt()
         patient.consent_channel = "telegram"
         db.commit()
         _send_patient_keyboard(db, patient, LANG_PROMPT_TEXT, LANG_BUTTONS)
@@ -1006,7 +1007,7 @@ def _send_info_cards_for_new_medications(db: Session, patient: Patient) -> None:
                 to_phone=patient.telegram_chat_id or patient.phone_number,
                 body=card,
             )
-            pm.med_info_card_sent_at = _dt.utcnow()
+            pm.med_info_card_sent_at = now_sgt()
         except Exception as exc:
             logger.warning("Failed to send info card for medication %s: %s", med.name, exc)
     db.commit()

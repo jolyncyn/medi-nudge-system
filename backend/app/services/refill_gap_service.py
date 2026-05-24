@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import logging
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.core.database import SessionLocal
 from app.models.models import (
     Patient, PatientMedication, Medication, DispensingRecord,
@@ -44,7 +45,7 @@ def detect_and_trigger(
     results = {"checked": 0, "campaigns_created": 0, "escalated": 0, "errors": 0}
 
     try:
-        today = datetime.utcnow().date()
+        today = now_sgt().date()
         query = (
             db.query(PatientMedication)
             .join(Patient, PatientMedication.patient_id == Patient.id)

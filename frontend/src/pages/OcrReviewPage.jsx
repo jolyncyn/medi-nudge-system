@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getPrescriptions, confirmPrescription, rejectPrescription } from "../lib/api";
+import { formatSgtDate } from "../lib/time";
 
 const STATUS_CHIP = {
   pending_review: "bg-yellow-100 text-yellow-800",
@@ -124,7 +125,7 @@ export default function OcrReviewPage() {
                     </span>
                   </div>
                   <p className="font-body text-xs text-on-surface/40 mt-1.5">
-                    {s.ocr_engine} · {new Date(s.uploaded_at).toLocaleDateString()}
+                    {s.ocr_engine} · {formatSgtDate(s.uploaded_at)}
                   </p>
                 </button>
               ))}
@@ -220,4 +221,3 @@ export default function OcrReviewPage() {
     </div>
   );
 }
-

@@ -1,9 +1,9 @@
 """Analytics and nudge campaign routes."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
-from datetime import datetime, timedelta
+from datetime import timedelta
 from app.core.database import get_db
+from app.core.timezone import now_sgt
 from app.core.security import get_current_user
 from app.models.models import (
     NudgeCampaign, EscalationCase, User, DoseLog, Medication,
@@ -38,7 +38,7 @@ def adherence_analytics(
     _user: User = Depends(get_current_user),
 ):
     """Weekly adherence rate: % campaigns resolved with 'confirmed' response."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = now_sgt() - timedelta(days=days)
     campaigns = (
         db.query(NudgeCampaign)
         .filter(NudgeCampaign.created_at >= since)
@@ -68,7 +68,7 @@ def escalation_analytics(
     _user: User = Depends(get_current_user),
 ):
     """Weekly escalation volume by priority."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = now_sgt() - timedelta(days=days)
     cases = db.query(EscalationCase).filter(EscalationCase.created_at >= since).all()
     weekly: dict[str, dict] = {}
     for c in cases:
@@ -169,7 +169,7 @@ def dashboard_summary(
     _user: User = Depends(get_current_user),
 ):
     """Dashboard KPIs: adherence, high-risk count, pending refills, at-risk patients, escalations."""
-    now = datetime.utcnow()
+    now = now_sgt()
     since_30d = now - timedelta(days=30)
     since_60d = now - timedelta(days=60)
 
@@ -298,7 +298,7 @@ def get_dose_history(
     _user: User = Depends(get_current_user),
 ):
     """Per-patient dose history with optional medication filter."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = now_sgt() - timedelta(days=days)
     q = db.query(DoseLog).filter(
         DoseLog.patient_id == patient_id,
         DoseLog.logged_at >= since,
@@ -331,7 +331,7 @@ def dose_adherence_analytics(
     _user: User = Depends(get_current_user),
 ):
     """Dose-level adherence analytics. Optionally group_by=medication."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = now_sgt() - timedelta(days=days)
     logs = db.query(DoseLog).filter(DoseLog.logged_at >= since).all()
 
     if group_by == "medication":
@@ -385,7 +385,7 @@ def critical_adherence_analytics(
     critical_med_ids = set(
         m.id for m in db.query(Medication).filter(Medication.is_critical == True).all()
     )
-    since = datetime.utcnow() - timedelta(days=days)
+    since = now_sgt() - timedelta(days=days)
     logs = db.query(DoseLog).filter(DoseLog.logged_at >= since).all()
 
     weekly: dict[str, dict] = {}
@@ -419,7 +419,7 @@ def missed_dose_heatmap(
     _user: User = Depends(get_current_user),
 ):
     """Missed dose counts grouped by day of week and time of day."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = now_sgt() - timedelta(days=days)
     logs = db.query(DoseLog).filter(DoseLog.logged_at >= since, DoseLog.status == "missed").all()
 
     days_order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]

@@ -11,6 +11,7 @@ from datetime import datetime
 import boto3
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.timezone import now_sgt
 from app.models.models import (
     PrescriptionScan, ExtractedMedicationField,
     Medication, PatientMedication, DispensingRecord,
@@ -101,7 +102,7 @@ def ingest_image(
         return existing
 
     # Store image — S3 in production (when AWS_S3_BUCKET_NAME is set), local filesystem otherwise
-    filename = f"{image_hash[:16]}_{int(datetime.utcnow().timestamp())}.jpg"
+    filename = f"{image_hash[:16]}_{int(now_sgt().timestamp())}.jpg"
     if settings.AWS_S3_BUCKET_NAME:
         image_path = _store_image_s3(image_bytes, patient_id, filename)
     else:
@@ -282,7 +283,7 @@ def confirm_scan(
 
     scan.status = "confirmed"
     scan.confirmed_by = confirmed_by
-    scan.confirmed_at = datetime.utcnow()
+    scan.confirmed_at = now_sgt()
     db.commit()
 
     _auto_populate_medication(db, scan)

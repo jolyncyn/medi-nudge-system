@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+from app.core.timezone import now_sgt
 
 logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
@@ -106,7 +107,7 @@ def _run_no_reply_check():
         from app.services.nudge_campaign_service import retry_or_escalate
 
         db = SessionLocal()
-        threshold = datetime.utcnow() - timedelta(hours=48)
+        threshold = now_sgt() - timedelta(hours=48)
         stale_campaigns = (
             db.query(NudgeCampaign)
             .filter(
@@ -134,7 +135,7 @@ def _run_onboarding_drop_off_check():
         from app.services.onboarding_service import handle_drop_off
 
         db = SessionLocal()
-        threshold = datetime.utcnow() - timedelta(hours=24)
+        threshold = now_sgt() - timedelta(hours=24)
 
         stale_patients = (
             db.query(Patient)

@@ -8,6 +8,7 @@ from datetime import datetime
 from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.timezone import now_sgt
 from app.core.config import settings
 from app.models.models import Patient, NudgeCampaign, OutboundMessage, PatientMedication, VoiceProfile, PrescriptionScan
 from app.services.response_classifier import classify_response
@@ -308,9 +309,9 @@ def _handle_voice_consent_reply(db: Session, patient: Patient, text: str) -> boo
     if any(k in lower for k in ("yes", "ya", "同意", "是", "ok", "okay")):
         patient.pending_action = None
         if profile:
-            profile.patient_consent_at = _dt.utcnow()
+            profile.patient_consent_at = now_sgt()
             if profile.donor_name == "self":
-                profile.donor_consent_at = _dt.utcnow()
+                profile.donor_consent_at = now_sgt()
         db.commit()
 
         if profile and profile.sample_file_path:
@@ -489,7 +490,7 @@ def _handle_caregiver_text(db: Session, patient: Patient, chat_id: str, text: st
     from datetime import datetime as _dt
     lower = text.strip().lower()
     if any(k in lower for k in ("yes", "ya", "同意", "是")):
-        profile.donor_consent_at = _dt.utcnow()
+        profile.donor_consent_at = now_sgt()
         db.commit()
 
         # If patient consent is also present, trigger cloning
@@ -665,7 +666,7 @@ def _send_medication_info_card(db: Session, patient: Patient) -> None:
         to_phone=patient.telegram_chat_id or patient.phone_number,
         body=card,
     )
-    pm.med_info_card_sent_at = datetime.utcnow()
+    pm.med_info_card_sent_at = now_sgt()
     db.commit()
 
 
@@ -763,7 +764,7 @@ def _handle_taken(db: Session, patient: Patient) -> None:
         .all()
     )
     for pm in active_meds:
-        pm.last_taken_at = _dt.utcnow()
+        pm.last_taken_at = now_sgt()
         pm.consecutive_missed_doses = 0
         log_dose(db, patient.id, pm.medication_id, "taken", "patient_reply", patient_medication_id=pm.id)
     db.commit()
